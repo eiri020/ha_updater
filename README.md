@@ -31,6 +31,7 @@ The scripts are made based on my specific setup:
   * curl 
   * git
   * bash
+  
 (All these packages seem to be preinstalled in the standard docker homeassistant images)
 * It assumed that you already have a git repository to host the updates (create a master and develop branch)
 * .HA_VERSION should be in you .gitignore. This way the scripts can detect if you are running on HA server or the development system
