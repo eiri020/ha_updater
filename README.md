@@ -56,11 +56,43 @@ services:
     restart: always
     network_mode: host
 ```
-* git user and email need to be setup locally to have it both available within the container as on the HA host itself
+* git user and email need to be setup on the HA host in the home assistant configuration folder to have it both available within the docker container as on the HA host itself
 ```
 git config --local user.name "username"
 git config --local user.email "email"
 ```
+# Detailed flow
+For ease LAPTOP is my development system, HA the home Assistant server
+1) LAPTOP (develop): Edit configuration
+2) LAPTOP (develop): Commit and push
+
+To make sure that all changes done through Lovelace interface on the HA server are in the repository, changes to the master branch should be committed and pushed
+
+3) HA (master): Commit and push 
+
+Prepare develop branch on laptop to perform a test run with new configuration on the HA server
+
+4) LAPTOP (develop): Merge master into develop (will be the release branch)
+5) LAPTOP (develop): Resolve conflicts if any and start over (1)
+6) LAPTOP (develop): Commit and push merged develop branch
+
+Load changes on HA server, validate and restart HA 
+
+7) HA (develop): Change to develop on HA 
+8) HA (develop) Pull develop branch to HA
+9) HA (develop) Check config with HA REST API (https://developers.home-assistant.io/docs/api/rest)
+10) HA (develop) Restart with HA REST API
+11) HA (develop) On errors start over (1)
+
+12) Manually verify HA server (Lovelace, notifications and log files) to verify if the configuration is valid.
+
+13) HA (master): Switch back to master on HA
+14) HA (master): Pull master on HA
+15) HA (master): Merge develop into master on HA
+16) HA (master): Commit and push on HA
+
+When you forget the manual switchback to master on the HA server, changes in the UI might be updated in the develop branch in stead of the master branch. Step 7 does some checking and tries to repair this, but not all cases, like merge conflicts) could be covered and need manual intervention.  
+Keep in mind, the HA server should normally (except for steps 7-12) always be on the master branch.
 
 
 
