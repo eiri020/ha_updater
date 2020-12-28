@@ -13,7 +13,12 @@ The update cycle of my Home Assistant configuration have the following phases
 * Edit home assistant configuration in Visual Studio Code on develop branch
 * Commit and push development branch to git repository
 * Activate develop branch on HA server, validate and restart HA server
+* Check Home Assistant server if restart did succeed (check log files, notifications and UI)
 * When ok, merge develop into master and activate master on HA server   
-http://192.168.64.10/link/65#bkmrk-all-actions-could-be
- 
-All actions could be triggered from my laptop, although step 4 can also be done on the HA server after you had a visual look in the HA  (log files, Lovelace, notifications) after the restart with the develop branch
+
+All actions could be triggered from the remote development system, although some intermediate steps could also be initiated on the HA server itself or from the Lovelace interface.
+
+The scripts are made based on my specific setup:
+
+* A docker based setup (https://www.home-assistant.io/docs/installation/docker/)
+* git is configured to be accessed through SSH, using public keys for authentication
