@@ -1,0 +1,143 @@
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+ha_config=""
+message="Development changes"
+script=$(basename "${BASH_SOURCE[0]}")
+branch="unknown"
+
+ha_config=""
+
+while getopts ":snfc:" o; do
+    case "${o}" in
+        n)
+            notify=1
+            ;;
+        c)
+            ha_config=${OPTARG}
+            ;;
+        f) 
+            force=1
+            ;;
+        s)
+            silent=1
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
+if [ -z "$ha_config" ] 
+then
+  if [ -f ./.ha_config ]
+  then
+    ha_config=./.ha_config
+  elif [ -f "$DIR/.ha_config" ]
+  then
+    ha_config="$DIR/.ha_config"
+  else 
+    ha_config="~/ha_config"
+  fi 
+fi
+
+[ -z "$silent" ] && echo "$script ($(hostname)/$branch): Reading parameters from $ha_config"
+. "$ha_config"
+if [ $? -ne 0 ]
+then
+  >&2 echo "$script ($(hostname)/$branch): ERROR - .ha_config not loaded, should be in either ., executable path, or homedir" 
+  exit 1
+fi
+
+#######################################################################################
+## When running under docker, override config folder to /config
+#######################################################################################
+if [ -f /.dockerenv ] || grep -Eq '(lxc|docker)' /proc/1/cgroup
+then 
+  ha_homedir=/config
+fi
+
+exit_notification() {
+
+
+  if [ ! -z "$notify" ]
+  then
+    $DIR/notify -m "$1" -t "$script ($(hostname)/$branch)" -c "$ha_config"
+  fi
+
+  >&2 echo  "$script ($(hostname)/$branch): $1"
+  exit 1
+}
+
+add_remote_parameters() {
+
+  local args=""
+
+  [ ! -z "$keep_develop" ] && args="$args -d "
+  [ ! -z "$force" ] && args="$args -f "
+  [ ! -z "$notify" ] && args="$args -n "
+  [ ! -z "$silent" ] && args="$args -s "
+
+  echo "$args"
+}
+
+#######################################################################################
+## Check for home assistant configuration folder. Note: .HA_VERSION should be in your .gitignore
+#######################################################################################
+if [ ! -f "$ha_homedir/.HA_VERSION" ]
+then
+  [ -z "$silent" ] && echo "$script ($(hostname)/$branch): .HA_VERSION not found, assuming develop computer, now calling script on server"  
+  ssh $ha_user@$ha_host "cd $ha_homedir ; bin/ha_finalize_master $(add_remote_parameters)" 
+  exit 0
+fi
+
+cd "$ha_homedir"
+
+
+
+#######################################################################################
+## This script assumes that we are on develop and performed a test restart of HA
+#######################################################################################
+
+
+branch=$(git rev-parse --abbrev-ref HEAD)
+[ -z "$silent" ] && echo "$script ($(hostname)/$branch): Current branch is $branch"
+
+if [ -n "$(git status --porcelain)" ]
+then
+  git add -A && git commit -m "Changes on HA server (from UI)" && git push
+
+  if [ "$?" -ne 0 ] 
+  then
+    >&2 echo "$script ($(hostname)/$branch): Committing/Pushing changes of branch $branch failed. abort"
+    exit 1
+  fi
+fi
+
+if [ "$branch" != "master" ] 
+then
+  [ -z "$silent" ] && echo "$script ($(hostname)/$branch): Switching from $branch to master branch"
+  git checkout master && git pull
+  if [ "$?" -ne 0 ] 
+  then
+    >&2 echo "$script ($(hostname)/$branch): Error switching from $branch to master failed. abort"
+    exit 1
+  fi
+  branch=master
+fi
+
+
+[ -z "$silent" ] && echo "$script ($(hostname)/$branch): Merge develop into master"
+git merge origin/develop --commit -m "Merge develop into master"
+if [ "$?" -ne 0 ] 
+then
+  >&2 echo "$script ($(hostname)/$branch): Error merge develop to master. exit"
+  exit 1
+fi
+
+[ -z "$silent" ] && echo "$script ($(hostname)/$branch): Push changes to repository"
+git push
+if [ "$?" -ne 0 ] 
+then
+  >&2 echo "$script ($(hostname)/$branch): Error pushing merged master to server. exit"
+  exit 1
+fi
+
+[ -z "$silent" ] && echo "$script ($(hostname)/$branch): Done"

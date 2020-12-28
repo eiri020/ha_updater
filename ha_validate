@@ -1,0 +1,86 @@
+#!/bin/bash
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+ha_config=""
+
+while getopts "snc:" o; do
+    case "${o}" in
+        n)
+            notify=1
+            ;;
+        c)
+            ha_config=${OPTARG}
+            ;;
+        s)
+            silent=1
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
+
+if [ -z "$ha_config" ] 
+then
+  if [ -f ./.ha_config ]
+  then
+    ha_config=./.ha_config
+  elif [ -f "$DIR/.ha_config" ]
+  then
+    ha_config="$DIR/.ha_config"
+  else 
+    ha_config="~/ha_config"
+  fi 
+fi
+
+[ -z "$silent"] && echo "$script: Reading parameters from $ha_config"
+. "$ha_config"
+if [ $? -ne 0 ]
+then
+  >&2 echo "$script: ERROR .ha_config not loaded, should be in either ., executable path, or homedir" 
+  exit 1
+fi
+
+# if [ "$message" == "" ] 
+# then
+#   echo "Missing message parameter"
+#   echo "Usage: $(basename "${BASH_SOURCE[0]}") [-n] [-s] [-c config]"
+#   exit 1
+# fi
+
+exit_notification() {
+  if [ ! -z "$notify" ]
+  then
+    local msg=$(echo -n "$1" | jq -Rs .)
+    local json="{ \"title\": \"Error validating configuration\", \"message\": $msg }"
+    
+    RESULT=$(echo $json | curl -s --request POST \
+      --url "$ha_http_protocol://$ha_host:$ha_http_port/api/services/persistent_notification/create" \
+      --header "Authorization: Bearer $ha_api_token" \
+      --header 'Content-Type: application/json' \
+      --data @-) 
+    
+  fi
+
+  [ -z "$silent" ] && echo "Validation failed: $1"  
+  exit 1
+}
+
+[ -z "$silent" ] && echo "HA: Validating"  
+
+CHECK_RESULT=$(curl -s --request POST \
+  --url "$ha_http_protocol://$ha_host:$ha_http_port/api/config/core/check_config" \
+  --header "Authorization: Bearer $ha_api_token" \
+  --header 'Content-Type: application/json')
+if [ "$?" -ne 0 ] 
+then
+  exit_notification "HA: Error calling HA config validate API. abort"
+fi
+
+valid=$(echo $CHECK_RESULT | jq -r .result)
+if [ $valid != "valid" ]
+then
+  exit_notification "$(echo -n $CHECK_RESULT | jq -r .errors)"
+else
+  [ -z "$silent" ] && echo "HA: Validation OK"  
+fi

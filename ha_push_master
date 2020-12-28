@@ -1,0 +1,148 @@
+#!/bin/bash
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+ha_config=""
+message="Development changes"
+script=$(basename "${BASH_SOURCE[0]}")
+branch=unknown
+
+ha_config=""
+
+while getopts ":snfc:" o; do
+    case "${o}" in
+        n)
+            notify=1
+            ;;
+        c)
+            ha_config=${OPTARG}
+            ;;
+        f) 
+            force=1
+            ;;
+        s)
+            silent=1
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
+
+if [ -z "$ha_config" ] 
+then
+  if [ -f ./.ha_config ]
+  then
+    ha_config=./.ha_config
+  elif [ -f "$DIR/.ha_config" ]
+  then
+    ha_config="$DIR/.ha_config"
+  else 
+    ha_config="~/ha_config"
+  fi 
+fi
+
+[ -z "$silent" ] && echo "$script ($(hostname)/$branch): Reading parameters from $ha_config"
+. "$ha_config"
+if [ $? -ne 0 ]
+then
+  >&2 echo "$script ($(hostname)/$branch): ERROR - .ha_config not loaded, should be in either ., executable path, or homedir" 
+  exit 1
+fi
+
+sync_local_updates() {
+  local branch=$(git rev-parse --abbrev-ref HEAD)  
+  
+  local_changes=$(git fetch --quiet && git status -sb) 
+
+  if [ "$(echo $local_changes | head -n 1 | grep behind )" ]
+  then
+    [ -z "$silent" ] && echo "$script ($(hostname)/$branch): Current $branch branch seems behind"
+  
+    # if [ -z "$force" ]
+    # then
+    #   exit_notification "Branch on HA behind. Need manual pull to update HA $branch branch (or force flag). aborting."
+    # else 
+      [ -z "$silent" ] && echo "$script ($(hostname)/$branch): Pulling latest changes from repository..."
+      
+      git pull --no-commit 
+      if [ $? -ne 0 ]
+      then
+        exit_notification "Errors pulling changes from repository. (merge conflicts?). Need manual intervention. aborting."
+      fi
+    # fi
+  fi
+
+  if [ -n "$(git status --porcelain)" ]
+  then
+    [ -z "$silent" ] && echo "$script ($(hostname)/$branch): Changes detected on HA, commit and push changes to server..." 
+    git add -A && git commit -m "(Lovelace) Server changes" && git push 
+    if [ $? -ne 0 ]
+    then
+      exit_notification  "ERROR updating $branch branch to repository. aborting." 
+    fi
+  else
+    [ -z "$silent" ] && echo "$script ($(hostname)/$branch): No changes found on HA server on $branch"
+  fi
+}
+
+exit_notification() {
+
+  if [ ! -z "$notify" ]
+  then
+    $DIR/notify -m "$1" -t "$script ($(hostname)/$branch)" -c "$ha_config"
+  fi
+
+  >&2 echo  "$script ($(hostname)/$branch): $1"
+  exit 1
+}
+
+#######################################################################################
+## When running under docker, override config folder to /config
+#######################################################################################
+if [ -f /.dockerenv ] || grep -Eq '(lxc|docker)' /proc/1/cgroup
+then 
+  ha_homedir=/config
+fi
+
+#######################################################################################
+## Check for home assistant configuration folder. Note: .HA_VERSION should be in your .gitignore
+#######################################################################################
+if [ ! -f "$ha_homedir/.HA_VERSION" ]
+then
+  exit_notification "ERROR .HA_VERSION missing in $ha_homedir. Not a homeassistant configuration directory"
+fi
+
+cd "$ha_homedir"
+
+
+
+[ -z "$silent" ] && echo "$script ($(hostname)/$branch): Script ha_push_master - Sync master to repository"
+
+
+
+#########################################################################################
+## Check or switch to master branch (update changes to repository)
+#########################################################################################
+branch=$(git rev-parse --abbrev-ref HEAD)
+
+if [ "$branch" != "master" ]
+then
+  [ -z "$silent" ] && echo "$script ($(hostname)/$branch): Master branch expected, but $branch active, checking for changes..." 
+
+  sync_local_updates
+
+  [ -z "$silent" ] && echo "$script ($(hostname)/$branch): Switchig to master"
+  git checkout master 
+  if [ "$?" -ne 0 ]
+  then
+    exit_notification  "ERROR Switching to master branch. aborting." 
+  fi
+  branch=master
+fi
+
+[ -z "$silent" ] && echo "$script ($(hostname)/$branch): Checking for changes on HA server on master branch"
+
+sync_local_updates
+
+[ -z "$silent" ] && echo "$script ($(hostname)/$branch): Script ha_push_master - Done "
+
+

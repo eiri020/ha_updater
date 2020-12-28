@@ -1,0 +1,165 @@
+#!/bin/bash
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+ha_config=""
+message="Development changes"
+script=$(basename "${BASH_SOURCE[0]}")
+branch="unknown"
+
+ha_config=""
+
+while getopts ":snfc:" o; do
+    case "${o}" in
+        n)
+            notify=1
+            ;;
+        c)
+            ha_config=${OPTARG}
+            ;;
+        f) 
+            force=1
+            ;;
+        s)
+            silent=1
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
+
+if [ -z "$ha_config" ] 
+then
+  if [ -f ./.ha_config ]
+  then
+    ha_config=./.ha_config
+  elif [ -f "$DIR/.ha_config" ]
+  then
+    ha_config="$DIR/.ha_config"
+  else 
+    ha_config="~/ha_config"
+  fi 
+fi
+
+[ -z "$silent" ] && echo "$script ($(hostname)/$branch): Reading parameters from $ha_config"
+. "$ha_config"
+if [ $? -ne 0 ]
+then
+  >&2 echo "$script ($(hostname)/$branch): ERROR - .ha_config not loaded, should be in either ., executable path, or homedir" 
+  exit 1
+fi
+
+#######################################################################################
+## When running under docker, override config folder to /config
+#######################################################################################
+if [ -f /.dockerenv ] || grep -Eq '(lxc|docker)' /proc/1/cgroup
+then 
+  ha_homedir=/config
+fi
+
+exit_notification() {
+
+
+  if [ ! -z "$notify" ]
+  then
+    $DIR/notify -m "$1" -t "$script ($(hostname)/$branch)" -c "$ha_config"
+  fi
+
+  if [ ! -z "$keep_develop" ]
+  then
+    local branch=$(git rev-parse --abbrev-ref HEAD)
+    if [ "$branch" != "master" ]
+    then
+      git checkout master
+    fi
+  fi  
+
+  >&2 echo  "$script ($(hostname)/$branch): $1"
+  exit 1
+}
+
+
+#######################################################################################
+## Check for home assistant configuration folder. Note: .HA_VERSION should be in your .gitignore
+#######################################################################################
+if [ ! -f "$ha_homedir/.HA_VERSION" ]
+then
+  exit_notification ".HA_VERSION missing in $ha_homedir. Not a homeassistant configuration directory. abort."
+fi
+
+cd "$ha_homedir"
+
+branch=$(git rev-parse --abbrev-ref HEAD)
+
+
+#######################################################################################
+## When we are here on develop, it may be that some (via UI) changes are performed on 
+## this branch
+#######################################################################################
+if [ "$branch" != "develop" ]
+then
+  [ -z "$silent" ] && echo "$script ($(hostname)/$branch): Switching to develop"
+  git checkout develop  
+  if [ "$?" -ne 0 ] 
+  then
+    exit_notification "Error checking out develop. abort"
+  fi
+  branch=develop
+fi
+
+[ -z "$silent" ] && echo "$script ($(hostname)/$branch): Pulling develop"
+git pull --no-commit
+if [ "$?" -ne 0 ] 
+then
+  exit_notification "Error pull develop. abort"
+fi
+
+# HA does also check config during restart, but still restarts
+[ -z "$silent" ] && echo "$script ($(hostname)/$branch): Validating Home Assistant configuration..."
+CHECK_RESULT=$(curl -s --request POST \
+  --url "$ha_http_protocol://$ha_host:$ha_http_port/api/config/core/check_config" \
+  --header "Authorization: Bearer $ha_api_token" \
+  --header 'Content-Type: application/json')
+if [ "$?" -ne 0 ] 
+then
+  exit_notification "Error calling HA config validate API. abort"
+fi
+
+# Are there errors?
+valid=$(echo $CHECK_RESULT | jq -r .result)
+if [ $valid != "valid" ]
+then
+  exit_notification "$(echo -n $CHECK_RESULT | jq -r .errors)"
+else
+  [ -z "$silent" ] && echo "$script ($(hostname)/$branch): Validation OK, restarting HA..."  
+fi
+
+RESTART_RESULT=$(curl -s --request POST \
+  --url "$ha_http_protocol://$ha_host:$ha_http_port/api/services/homeassistant/restart" \
+  --header "Authorization: Bearer $ha_api_token" \
+  --header 'Content-Type: application/json')
+if [ "$?" -ne 0 ] 
+then
+  exit_notification "Error calling HA restart API. abort"
+fi
+
+if [ -n "$(git status --porcelain)" ]
+then
+  [ -z "$silent" ] && echo "$script ($(hostname)/$branch): Some changes detected on develop, committing changes to repository"  
+  git add -A && git commit -m "HA server changes" && git push
+fi
+
+[ -z "$silent" ] && echo "$script ($(hostname)/$branch): Now check Lovelace UI for startup errors, and call ha_finalize_master to merge develop into master"  
+
+# MESSSAGE_RESULT=$(curl -s --request GET \
+#   --url "$ha_http_protocol://$ha_host:$ha_http_port/api/states/persistent_notification.homeassistant_check_config" \
+#   --header "Authorization: Bearer $ha_api_token" \
+#   --header 'Content-Type: application/json'
+
+# if [ "$(echo $MESSAGE_RESULT | jq -s .entity_id)" == "persistent_notification.homeassistant_check_config" ]
+# then
+#   echo "HA: Error during restart:"
+#   echo "$(echo $MESSAGE_RESULT | jq -s .attributes.message)"
+#   echo "HA: Error calling HA restart API. Switchback to master. exit"
+#   git checkout master
+#   exit 1
+# fi

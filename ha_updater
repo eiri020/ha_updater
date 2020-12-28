@@ -1,0 +1,181 @@
+#!/bin/bash
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+DIR_RELATIVE=$(dirname ${BASH_SOURCE[0]})
+
+ha_config=""
+message="Development changes"
+script=$(basename "${BASH_SOURCE[0]}")
+branch=unknown
+
+while getopts "sdnfc:m:" o; do
+    case "${o}" in
+        m)
+            message=${OPTARG}
+            ;;
+        d)
+            keep_develop=1
+            ;;
+        f)
+            force=1
+            ;;
+        n)
+            notify=1
+            ;;
+        c)
+            ha_config=${OPTARG}
+            ;;
+        s)
+            silent=1
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
+if [ -z "$ha_config" ] 
+then
+  if [ -f ./.ha_config ]
+  then
+    ha_config=./.ha_config
+  elif [ -f "$DIR/.ha_config" ]
+  then
+    ha_config="$DIR/.ha_config"
+  else 
+    ha_config="~/ha_config"
+  fi 
+fi
+
+add_remote_parameters() {
+
+  local args=""
+
+  [ ! -z "$keep_develop" ] && args="$args -d "
+  [ ! -z "$force" ] && args="$args -f "
+  [ ! -z "$notify" ] && args="$args -n "
+  [ ! -z "$silent" ] && args="$args -s "
+
+  echo "$args"
+}
+
+[ -z "$silent"] && echo "$script ($(hostname)/$branch): Reading parameters from $ha_config"
+. "$ha_config"
+if [ $? -ne 0 ]
+then
+  >&2 echo "$script ($(hostname)/$branch): ERROR - .ha_config not loaded, should be in either ., executable path, or homedir" 
+  exit 1
+fi
+
+[ -z "$silent"] && echo "$script ($(hostname)/$branch): Check running from remote HA configuration directory..."
+if [ ! -f configuration.yaml ]
+then
+  >&2 echo "$script ($(hostname)/$branch): ERROR - This script is expected to run from a remote HA configuration directory. current folder: $(pwd)"
+  exit 1
+fi
+
+[ -z "$silent"] && echo "$script ($(hostname)/$branch): Check running on HA server itself..."
+if [ -f .HA_VERSION ]
+then
+  >&2 echo "$script ($(hostname)/$branch): ERROR - .HA_VERSION found. This script is expected to run from a remote HA configuration directory. not the HA server itself"
+  exit 1
+fi
+
+
+[ -z "$silent"] && echo "$script ($(hostname)/$branch): Check if current branch is develop"
+branch=$(git rev-parse --abbrev-ref HEAD)
+if [ $? -ne 0 ]
+then
+  >&2 echo "$script ($(hostname)/$branch): ERROR - cannot retrieve branch name. is ha_homedir ($ha_homedir) correct?"
+fi
+
+###################################################################################
+## Abort when active branch is not develop
+###################################################################################
+if [ "$branch" != "develop" ]
+then
+  >&2 echo "$script ($(hostname)/$branch): Current branch is $branch. develop expected, aborting"
+  exit 1
+fi
+
+###################################################################################
+## Abort (if force is not set) when we are behind on branch. This might be possible
+## when you forget to switch back on HA server and pushed some changes to develop
+###################################################################################
+[ -z "$silent"] && echo "$script ($(hostname)/$branch): Check if current branch is not behind with repository..."
+local_changes=$(git fetch --quiet && git status -sb) 
+if [ "$(echo $local_changes | head -n 1 | grep behind )" ]
+then
+  [ -z "$silent" ] && echo "$script ($(hostname)/$branch): Current develop branch seems behind (possible HA UI updates on develop)"
+  if [ -z "$force" ]
+  then
+    >&2 echo "$script ($(hostname)/$branch): Need manual pull to update local develop branch. aborting."
+  else 
+    [ -z "$silent" ] && echo "$script ($(hostname)/$branch): Force flag set. Trying to pull latest changes from repository"
+    git pull --no-commit 
+    if [ $? ne 0 ]
+    then
+      >&2 echo "$script ($(hostname)/$branch): Errors pulling changes from repository. (merge conflicts?). Need manual intervention. aborting."
+      exit 1
+    fi
+  fi
+fi
+
+
+#####################################################################################
+## Abort when we have no changes on local develop branch (and force flag is not set)
+#####################################################################################
+[ -z "$silent"] && echo "$script ($(hostname)/$branch): Check if we have local changes..."
+local_changes=$(git status --porcelain) 
+if [ ! -n "$local_changes" ] && [ -z "$force" ]
+then
+  >&2 echo "$script ($(hostname)/$branch): No local changes, nothing to do. Use -f flag to force sync, aborting"
+  exit 0
+fi
+
+if [ -n "$local_changes" ]
+then 
+  [ -z "$silent" ] && echo "$script ($(hostname)/$branch): Local changes found committing... with message '$message'"
+  
+  git add -A && git commit -m "$message" && git push
+  if [ $? -ne 0 ] 
+  then
+    >&2 echo "$script ($(hostname)/$branch): Error during local development commit/push, abort"
+    exit 1
+  fi  
+fi
+
+
+###################################################################################
+## First update (UI) changes on HA server to master 
+###################################################################################
+[ -z "$silent" ] && echo "$script ($(hostname)/$branch): Commit and push changes on master at HA server"
+ssh $ha_user@$ha_host "cd $ha_homedir ; $DIR_RELATIVE/ha_push_master $(add_remote_parameters)" 
+if [ $? -ne 0 ] 
+then
+  >&2 echo "$script ($(hostname)/$branch): Errors on ha_push_master on HA, abort"
+  exit 1
+fi  
+
+###################################################################################
+## Combine both changes on develop and master for test
+###################################################################################
+[ -z "$silent" ] && echo "$script ($(hostname)/$branch): Merge master changes into develop"
+git merge origin/master --commit -m "Merge master into develop" && git push
+if [ $? -ne 0 ] 
+then
+  >&2 echo "$script ($(hostname)/$branch): Errors/Conflicts during merge of master into develop, abort"
+  exit 1
+fi  
+
+###################################################################################
+## Activate develop on HA, validate config and restart HA
+###################################################################################
+[ -z "$silent" ] && echo "$script ($(hostname)/$branch): Activate develop on HA, validate config and restart HA"
+ssh $ha_user@$ha_host "cd $ha_homedir ; $DIR_RELATIVE/ha_pull_develop $(add_remote_parameters)" 
+if [ $? -ne 0 ] 
+then
+  >&2 echo "$script ($(hostname)/$branch): Errors on HA, exiting"
+  exit 1
+fi  
+[ "$verbose" == "1" ] && echo "$script ($(hostname)/$branch): Done."
+
+
+  

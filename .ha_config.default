@@ -1,0 +1,7 @@
+ha_homedir=/home/homeassistant/.homeassistant
+ha_host=my-hostname.org
+ha_user=homeassistant
+ha_api_token="user-long-live-access-token"
+ha_http_protocol=https
+ha_http_port=8123
+notification=1

@@ -1,0 +1,71 @@
+#!/bin/bash 
+
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+
+ha_config=""
+script=$(basename "${BASH_SOURCE[0]}")
+
+while getopts "st:m:c:" o; do
+    case "${o}" in
+        m)
+            message=${OPTARG}
+            ;;
+        t)
+            title=${OPTARG}
+            ;;
+        c)
+            ha_config=${OPTARG}
+            ;;
+        s)
+            silent=1
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
+
+if [ -z "$ha_config" ] 
+then
+  if [ -f ./.ha_config ]
+  then
+    ha_config=./.ha_config
+  elif [ -f "$DIR/.ha_config" ]
+  then
+    ha_config="$DIR/.ha_config"
+  else 
+    ha_config="~/ha_config"
+  fi 
+fi
+
+[ -z "$silent"] && echo "$script: Reading parameters from $ha_config"
+. "$ha_config"
+if [ $? -ne 0 ]
+then
+  >&2 echo "$script: ERROR .ha_config not loaded, should be in either ., executable path, or homedir" 
+  exit 1
+fi
+
+if [ "$message" == "" ] 
+then
+  >&2 echo "$script: Missing message parameter"
+  >&2 echo "$script: Usage: $(basename "${BASH_SOURCE[0]}") -m <msg> [-t title] [-c config] [-s]"
+  exit 1
+fi
+
+if [ "$title" != "" ]
+then 
+  json=$(printf "{ \"title\": \"$title\", \"message\": \"$message\" }")
+else 
+  json=$(printf "{ \"message\": \"$message\" }")
+fi
+
+[ -z "$silent" ] && echo "$script: Sending notification to HA"
+RESULT=$(echo "$json" | curl -s --request POST \
+    --url "$ha_http_protocol://$ha_host:$ha_http_port/api/services/persistent_notification/create" \
+    --header "Authorization: Bearer $ha_api_token" \
+    --header 'Content-Type: application/json' \
+    --data @-)
+
+[ -z "$silent" ] && echo "$script: $(echo -n "$RESULT" | jq .)"
+
+
