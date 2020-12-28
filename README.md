@@ -37,6 +37,30 @@ The scripts are made based on my specific setup:
 * .HA_VERSION should be in you .gitignore. This way the scripts can detect if you are running on HA server or the development system
 * Activate the master branch on the Home Assistent server, activate the development branch on your development system
 
+# Docker
+Because of my docker setup, a few special considerations were needed:
+
+* volume mount the homeassistant users .ssh folder into the container, to be able to use the public key authentication when you trigger commands from the Lovelace UI. Here is mine docker-compose.yaml:
+```
+version: '3'
+services:
+  homeassistant:
+    container_name: home-assistant
+    image: homeassistant/raspberrypi4-homeassistant:stable
+    volumes:
+      - /home/homeassistant/.homeassistant:/config
+      - /var/lib/dehydrated/certs/my-host-name:/certs:ro
+      - /home/homeassistant/.ssh:/root/.ssh:ro
+    environment:
+      - TZ=Europe/Amsterdam
+    restart: always
+    network_mode: host
+```
+* git user and email need to be setup locally to have it both available within the container as on the HA host itself
+```
+git config --local user.name "username"
+git config --local user.email "email"
+```
 
 
 
