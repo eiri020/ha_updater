@@ -159,5 +159,12 @@ This helper script runs the HA configuration HA validater REST API with on the c
 
 Can be runned on: developer system, Home Assistant server, HA Docker container 
 
-## ha_notify 
+## ha_notify [-c ".ha_config location"] [-s] <-m "message"> [-t title]
+This help scripts creates a persistant notification on the HA server
+
+Can be runned on: developer system, Home Assistant server, HA Docker container 
+
+Options
+* -t => title of notification
+* -m => message of notification
 
