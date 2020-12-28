@@ -94,5 +94,37 @@ Manually verify HA server (Lovelace, notifications and log files) to verify if t
 When you forget the manual switchback to master on the HA server, changes in the UI might be updated in the develop branch in stead of the master branch. Step 7 does some checking and tries to repair this, but not all cases, like merge conflicts) could be covered and need manual intervention.  
 Keep in mind, the HA server should normally (except for steps 7-12) always be on the master branch.
 
+# Configuration file
+All scripts will look (in this order) for the .ha_config file
+  * file with -c switch
+  * current working directory
+  * ha_updater script directory
+  * user home directory
+```
+ha_homedir=/home/homeassistant/.homeassistant
+ha_host=my-host-name
+ha_user=homeassistant
+ha_api_token="long lived access token"
+ha_http_protocol=https
+ha_http_port=8123
+notify=1
+silent=1
+force=1
+```
+* ha_homedir => full path of Home Assistant configuration on the HA host. Will be overriden with /config when script is detected to run within a docker container 
+* ha_host => will be both used as hostname for the HA REST API and for SSH connections
+* ha_user => Unix username used for SSH connections
+* ha_api_token => Token generated under user profile to access the HA REST API (https://www.home-assistant.io/docs/authentication/)
+* ha_http_protocol => either be http or https
+* ha_http_port => TCP port where HA is listening
+* notify=1 => HA server scripts will create persistant notification in case erros are detected
+* silent=1 => Script output will be less verbose. Currently still all output of git commands will be visible
+* force=1 => Try to repair unexpected states (like behind with git repo, or wrong branch)
 
+
+# Scripts
+For all scripts the following parameters can be supplied:
+* -f => Force some actions, for example when changes are detected, first update the repository. Else processing will be aborted
+* -n => Report (in some scripts) to the persistent_notification system of Home Assistant
+* -c <config file> => location of .ha_config. 
 
