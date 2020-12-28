@@ -41,28 +41,15 @@ then
   exit 1
 fi
 
-# if [ "$message" == "" ] 
-# then
-#   echo "Missing message parameter"
-#   echo "Usage: $(basename "${BASH_SOURCE[0]}") [-n] [-s] [-c config]"
-#   exit 1
-# fi
 
 exit_notification() {
+
   if [ ! -z "$notify" ]
   then
-    local msg=$(echo -n "$1" | jq -Rs .)
-    local json="{ \"title\": \"Error validating configuration\", \"message\": $msg }"
-    
-    RESULT=$(echo $json | curl -s --request POST \
-      --url "$ha_http_protocol://$ha_host:$ha_http_port/api/services/persistent_notification/create" \
-      --header "Authorization: Bearer $ha_api_token" \
-      --header 'Content-Type: application/json' \
-      --data @-) 
-    
+    $DIR/notify -m "$1" -t "$script ($(hostname)/$branch)" -c "$ha_config"
   fi
 
-  [ -z "$silent" ] && echo "Validation failed: $1"  
+  >&2 echo  "$script ($(hostname)/$branch): Validation failed: $1"
   exit 1
 }
 

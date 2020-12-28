@@ -1,4 +1,7 @@
+#!/bin/bash
+
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+DIR_RELATIVE=$(dirname ${BASH_SOURCE[0]})
 
 ha_config=""
 message="Development changes"
@@ -84,7 +87,7 @@ add_remote_parameters() {
 if [ ! -f "$ha_homedir/.HA_VERSION" ]
 then
   [ -z "$silent" ] && echo "$script ($(hostname)/$branch): .HA_VERSION not found, assuming develop computer, now calling script on server"  
-  ssh $ha_user@$ha_host "cd $ha_homedir ; bin/ha_finalize_master $(add_remote_parameters)" 
+  ssh $ha_user@$ha_host "cd $ha_homedir ; $DIR_RELATIVE/$script $(add_remote_parameters)" 
   exit 0
 fi
 

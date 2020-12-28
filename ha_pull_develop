@@ -1,5 +1,6 @@
 #!/bin/bash
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+DIR_RELATIVE=$(dirname ${BASH_SOURCE[0]})
 
 ha_config=""
 message="Development changes"
@@ -8,7 +9,7 @@ branch="unknown"
 
 ha_config=""
 
-while getopts ":snfc:" o; do
+while getopts ":sdnfc:" o; do
     case "${o}" in
         n)
             notify=1
@@ -21,6 +22,9 @@ while getopts ":snfc:" o; do
             ;;
         s)
             silent=1
+            ;;
+        d)
+            keep_develop=1
             ;;
     esac
 done
@@ -77,13 +81,29 @@ exit_notification() {
   exit 1
 }
 
+add_remote_parameters() {
 
+  local args=""
+
+  [ ! -z "$keep_develop" ] && args="$args -d "
+  [ ! -z "$force" ] && args="$args -f "
+  [ ! -z "$notify" ] && args="$args -n "
+  [ ! -z "$silent" ] && args="$args -s "
+
+  echo "$args"
+}
 #######################################################################################
 ## Check for home assistant configuration folder. Note: .HA_VERSION should be in your .gitignore
 #######################################################################################
 if [ ! -f "$ha_homedir/.HA_VERSION" ]
 then
   exit_notification ".HA_VERSION missing in $ha_homedir. Not a homeassistant configuration directory. abort."
+fi
+if [ ! -f "$ha_homedir/.HA_VERSION" ]
+then
+  [ -z "$silent" ] && echo "$script ($(hostname)/$branch): .HA_VERSION not found, assuming develop computer, now calling script on server"  
+  ssh $ha_user@$ha_host "cd $ha_homedir ; $DIR_RELATIVE/$script $(add_remote_parameters)" 
+  exit 0
 fi
 
 cd "$ha_homedir"
