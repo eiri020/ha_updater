@@ -10,11 +10,11 @@ Changes to will be managed by git, to enable history tracking and easy undo in c
 
 The update cycle of my Home Assistant configuration have the following phases
 
-* Edit home assistant configuration in Visual Studio Code on develop branch
-* Commit and push development branch to git repository
-* Activate develop branch on HA server, validate and restart HA server
-* Check Home Assistant server if restart did succeed (check log files, notifications and UI)
-* When ok, merge develop into master and activate master on HA server   
+1. Edit home assistant configuration in Visual Studio Code on develop branch
+1. Commit and push development branch to git repository
+1. Activate develop branch on HA server, validate and restart HA server
+1. Check Home Assistant server if restart did succeed (check log files, notifications and UI)
+1. When ok, merge develop into master and activate master on HA server   
 
 All actions could be triggered from the remote development system, although some intermediate steps could also be initiated on the HA server itself or from the Lovelace interface.
 
@@ -25,12 +25,12 @@ The scripts are made based on my specific setup:
 
 # Requirements
 * following software packages need to be installed, on both your development pc and the Home Assistant server:
-** jq
-** head
-** getopt
-** curl 
-** git
-** bash
+  * jq
+  * head
+  * getopt
+  * curl 
+  * git
+  * bash
 (All these packages seem to be preinstalled in the standard docker homeassistant images)
 * It assumed that you already have a git repository to host the updates (create a master and develop branch)
 * .HA_VERSION should be in you .gitignore. This way the scripts can detect if you are running on HA server or the development system
