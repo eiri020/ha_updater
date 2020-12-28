@@ -84,14 +84,12 @@ Load changes on HA server, validate and restart HA
 10) HA (develop) Restart with HA REST API
 11) HA (develop) On errors start over (1)
 
+Manually verify HA server (Lovelace, notifications and log files) to verify if the configuration is valid.
 
-12) Manually verify HA server (Lovelace, notifications and log files) to verify if the configuration is valid.
-
-
-13) HA (master): Switch back to master on HA
-14) HA (master): Pull master on HA
-15) HA (master): Merge develop into master on HA
-16) HA (master): Commit and push on HA
+12) HA (master): Switch back to master on HA
+13) HA (master): Pull master on HA
+14) HA (master): Merge develop into master on HA
+15) HA (master): Commit and push on HA
 
 When you forget the manual switchback to master on the HA server, changes in the UI might be updated in the develop branch in stead of the master branch. Step 7 does some checking and tries to repair this, but not all cases, like merge conflicts) could be covered and need manual intervention.  
 Keep in mind, the HA server should normally (except for steps 7-12) always be on the master branch.
