@@ -129,15 +129,35 @@ For all scripts the following parameters can be supplied:
 * -c <config file> => location of .ha_config. 
 
 ## ha_updater [-m "Commit message"] [-d] [-f] [-n] [-c ".ha_config location"] [-s]
-This script initiates the update of new configuration after each edit on the developer system. It perform step 1-11 and calls the other scripts when actions on the HA server are required.
+This script initiates the update of new configuration after each edit on the developer system. It perform step 1-11 and calls the other scripts (ha_push_master and ha_pull_develop) when actions on the HA server need to be performed. The script will not continue when it detects no changes (or changes are already pushed to repository), in this case use the -f force flag to override this behaviour
 
 Can be runned on: developer system
 
 Options:
 * -d => will keep the branch to develop when script ha_pull_develop encounters errors
-## ha_push_master
+
+## ha_push_master [-f] [-n] [-c ".ha_config location"] [-s]
 This script checks if there are pending updates (step 3) on the master branch of the HA server. Changes probably done through the Lovelace UI, like scene updates.
 
 Can be runned on: developer system, Home Assistant server, HA Docker container 
 
+## ha_pull_develop  [-f] [-n] [-c ".ha_config location"] [-s] [-d]
+This script will pull the develop branch on the HA server, executes a validate configuration and finally restart the HA server to activate the changes (step 7-11).
+
+Can be runned on: developer system, Home Assistant server, HA Docker container 
+
+Options:
+* -d => will keep the branch to develop when script ha_pull_develop encounters errors
+
+## ha_finalize_master [-f] [-n] [-c ".ha_config location"] [-s]
+This script needs to be runned after the HA restart to swicth back to the master branch on the HA server (steps 12-15).
+
+Can be runned on: developer system, Home Assistant server, HA Docker container 
+
+## ha_validate  [-n] [-c ".ha_config location"] [-s]
+This helper script runs the HA configuration HA validater REST API with on the current active branch
+
+Can be runned on: developer system, Home Assistant server, HA Docker container 
+
+## ha_notify 
 
