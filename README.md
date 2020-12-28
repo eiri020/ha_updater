@@ -64,32 +64,32 @@ git config --local user.email "email"
 # Detailed flow
 For ease LAPTOP is my development system, HA the home Assistant server
 1) LAPTOP (develop): Edit configuration
-2) LAPTOP (develop): Commit and push
+2) LAPTOP (develop): Commit and push (script ha_updater)
 
 To make sure that all changes done through Lovelace interface on the HA server are in the repository, changes to the master branch should be committed and pushed
 
-3) HA (master): Commit and push 
+3) HA (master): Commit and push (script ha_updater => ha_push_master)
 
 Prepare develop branch on laptop to perform a test run with new configuration on the HA server
 
-4) LAPTOP (develop): Merge master into develop (will be the release branch)
-5) LAPTOP (develop): Resolve conflicts if any and start over (1)
-6) LAPTOP (develop): Commit and push merged develop branch
+4) LAPTOP (develop): Merge master into develop (will be the release branch) (script ha_updater)
+5) LAPTOP (develop): Resolve conflicts if any and start over (1) (script ha_updater)
+6) LAPTOP (develop): Commit and push merged develop branch (script ha_updater)
 
 Load changes on HA server, validate and restart HA 
 
-7) HA (develop): Change to develop on HA 
-8) HA (develop) Pull develop branch to HA
-9) HA (develop) Check config with HA REST API (https://developers.home-assistant.io/docs/api/rest)
-10) HA (develop) Restart with HA REST API
-11) HA (develop) On errors start over (1)
+7) HA (develop): Change to develop on HA (script ha_updater => ha_pull_develop)
+8) HA (develop) Pull develop branch to HA (script ha_updater => ha_pull_develop)
+9) HA (develop) Check config with HA REST API (https://developers.home-assistant.io/docs/api/rest) (script ha_updater => ha_pull_develop)
+10) HA (develop) Restart with HA REST API (script ha_updater => ha_pull_develop)
+11) HA (develop) On errors start over (1) (script ha_updater => ha_pull_develop)
 
 Manually verify HA server (Lovelace, notifications and log files) to verify if the configuration is valid.
 
-12) HA (master): Switch back to master on HA
-13) HA (master): Pull master on HA
-14) HA (master): Merge develop into master on HA
-15) HA (master): Commit and push on HA
+12) HA (master): Switch back to master on HA (script ha_finalize_maaster)
+13) HA (master): Pull master on HA (script ha_finalize_maaster)
+14) HA (master): Merge develop into master on HA (script ha_finalize_maaster)
+15) HA (master): Commit and push on HA (script ha_finalize_maaster)
 
 When you forget the manual switchback to master on the HA server, changes in the UI might be updated in the develop branch in stead of the master branch. Step 7 does some checking and tries to repair this, but not all cases, like merge conflicts) could be covered and need manual intervention.  
 Keep in mind, the HA server should normally (except for steps 7-12) always be on the master branch.
@@ -127,4 +127,15 @@ For all scripts the following parameters can be supplied:
 * -f => Force some actions, for example when changes are detected, first update the repository. Else processing will be aborted
 * -n => Report (in some scripts) to the persistent_notification system of Home Assistant
 * -c <config file> => location of .ha_config. 
+
+## ha_updater [-m "Commit message"] [-d] [-f] [-n] [-c ".ha_config location"] [-s]
+To be runned on: developer system
+This script initiates the update of new configuration after each edit on the developer system. It perform step 1-11 and calls the other scripts when actions on the HA server are required.
+
+options
+* -d => will keep the branch to develop when script ha_pull_develop encounters errors
+* -f => force will try to automatically repair unexpected states, like local repositories behind bare
+* -n => create notifications in HA when errors do occur
+* -c => alternative location for configuration file
+* -s => Less output of scripts. Only git commands will still display messages
 
