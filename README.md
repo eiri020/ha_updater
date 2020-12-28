@@ -129,13 +129,15 @@ For all scripts the following parameters can be supplied:
 * -c <config file> => location of .ha_config. 
 
 ## ha_updater [-m "Commit message"] [-d] [-f] [-n] [-c ".ha_config location"] [-s]
-To be runned on: developer system
 This script initiates the update of new configuration after each edit on the developer system. It perform step 1-11 and calls the other scripts when actions on the HA server are required.
 
-options
+Can be runned on: developer system
+
+Options:
 * -d => will keep the branch to develop when script ha_pull_develop encounters errors
-* -f => force will try to automatically repair unexpected states, like local repositories behind bare
-* -n => create notifications in HA when errors do occur
-* -c => alternative location for configuration file
-* -s => Less output of scripts. Only git commands will still display messages
+## ha_push_master
+This script checks if there are pending updates (step 3) on the master branch of the HA server. Changes probably done through the Lovelace UI, like scene updates.
+
+Can be runned on: developer system, Home Assistant server, HA Docker container 
+
 
