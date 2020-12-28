@@ -23,20 +23,6 @@ The scripts are made based on my specific setup:
 * A docker based setup (https://www.home-assistant.io/docs/installation/docker/)
 * git is configured to be accessed through SSH, using public keys for authentication
 
-# Requirements
-* following software packages need to be installed, on both your development pc and the Home Assistant server:
-  * jq
-  * head
-  * getopt
-  * curl 
-  * git
-  * bash
-  
-(All these packages seem to be preinstalled in the standard docker homeassistant images)
-* It assumed that you already have a git repository to host the updates (create a master and develop branch)
-* .HA_VERSION should be in you .gitignore. This way the scripts can detect if you are running on HA server or the development system
-* Activate the master branch on the Home Assistent server, activate the development branch on your development system
-
 # Docker
 Because of my docker setup, a few special considerations were needed:
 
@@ -93,6 +79,23 @@ Manually verify HA server (Lovelace, notifications and log files) to verify if t
 
 When you forget the manual switchback to master on the HA server, changes in the UI might be updated in the develop branch in stead of the master branch. Step 7 does some checking and tries to repair this, but not all cases, like merge conflicts) could be covered and need manual intervention.  
 Keep in mind, the HA server should normally (except for steps 7-12) always be on the master branch.
+
+# Installation
+* Clone this repository into the home assistant configuration folder. 
+* Copy the .ha_config.default to .ha_config and change options
+* Add the cloned repository folder to the .gitignore of your Home Assistant Configuration
+* following software packages need to be installed, on both your development pc and the Home Assistant server:
+  * jq
+  * head
+  * getopt
+  * curl 
+  * git
+  * bash
+  
+(All these packages seem to be preinstalled in the standard docker homeassistant images)
+* It assumed that you already have a git repository to host the updates (create a master and develop branch)
+* .HA_VERSION should be in you .gitignore. This way the scripts can detect if you are running on HA server or the development system
+* Activate the master branch on the Home Assistent server, activate the development branch on your development system
 
 # Configuration file
 All scripts will look (in this order) for the .ha_config file
