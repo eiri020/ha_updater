@@ -1,6 +1,14 @@
 #!/bin/bash 
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+DIR_RELATIVE=$(dirname ${BASH_SOURCE[0]})
+
+if [ "$DIR" == "" ]
+then
+  DIR=.
+  DIR_RELATIVE=.
+fi
+
 
 ha_config=""
 script=$(basename "${BASH_SOURCE[0]}")
