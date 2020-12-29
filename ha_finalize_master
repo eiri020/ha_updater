@@ -28,6 +28,8 @@ while getopts ":snfc:" o; do
 done
 shift $((OPTIND-1))
 
+[ -z "$silent" ] && echo "$script ($(hostname)/$branch): Finalizing Configuration Updates. Switching back to master"
+
 if [ -z "$ha_config" ] 
 then
   if [ -f ./.ha_config ]
