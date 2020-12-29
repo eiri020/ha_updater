@@ -3,6 +3,12 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 DIR_RELATIVE=$(dirname ${BASH_SOURCE[0]})
 
+if [ -z "$DIR" ]
+then
+  DIR=.
+  DIR_RELATIVE=.
+fi
+
 ha_config=""
 message="Development changes"
 script=$(basename "${BASH_SOURCE[0]}")
@@ -27,6 +33,8 @@ while getopts ":snfc:" o; do
     esac
 done
 shift $((OPTIND-1))
+
+[ -z "$silent" ] && echo "$script ($(hostname)/$branch): Finalizing Configuration Updates. Switching back to master"
 
 if [ -z "$ha_config" ] 
 then
