@@ -102,7 +102,6 @@ Options
 * -t => title of notification
 * -m => message of notification
 
-<<<<<<< HEAD
 # Installation
 * Clone this repository into the home assistant configuration folder. 
 * Copy the .ha_config.default to .ha_config and change options
@@ -171,8 +170,6 @@ services:
 git config --local user.name "username"
 git config --local user.email "email"
 ```
-
-=======
 # Actions from Lovelace
 I added the following configuration to be able to trigger some actions in the HA Lovelace UI
 
@@ -207,4 +204,3 @@ sensor:
     name: ha_current_branch
     command: "git --git-dir=/config/.git rev-parse --abbrev-ref HEAD"
 ```
->>>>>>> c38588286e7e3d65a2ed09d1b6bd8b72e8feb12b
