@@ -94,13 +94,18 @@ This helper script runs the HA configuration HA validater REST API with on the c
 Can be runned on: developer system, Home Assistant server, HA Docker container 
 
 ## ha_notify [-c ".ha_config location"] [-s] <-m "message"> [-t title]
-This help scripts creates a persistant notification on the HA server
+This helper scripts creates a persistant notification on the HA server
 
 Can be runned on: developer system, Home Assistant server, HA Docker container 
 
 Options
 * -t => title of notification
 * -m => message of notification
+
+## ha_config_sync [-c ".ha_config location"] [-s]
+This helper script copies the .ha_config file to the HA server. This is because the .ha_config is excluded in the .gitignore
+
+Can be runned on: developer system 
 
 # Installation
 * Clone this repository (https://github.com/eiri020/ha_updater) as a submodule in the home assistant configuration folder:
