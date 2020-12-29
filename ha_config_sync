@@ -1,0 +1,76 @@
+
+#!/bin/bash
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
+DIR_RELATIVE=$(dirname ${BASH_SOURCE[0]})
+
+if [ -z "$DIR" ]
+then
+  DIR=.
+  DIR_RELATIVE=.
+fi
+
+ha_config=""
+script=$(basename "${BASH_SOURCE[0]}")
+
+while getopts "sc" o; do
+    case "${o}" in
+        c)
+            ha_config=${OPTARG}
+            ;;
+        s)
+            silent=1
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
+if [ -z "$ha_config" ] 
+then
+  if [ -f ./.ha_config ]
+  then
+    ha_config=./.ha_config
+  elif [ -f "$DIR/.ha_config" ]
+  then
+    ha_config="$DIR/.ha_config"
+  else 
+    ha_config="~/ha_config"
+  fi 
+fi
+
+[ -z "$silent"] && echo "$script ($(hostname)): Reading parameters from $ha_config"
+. "$ha_config"
+if [ $? -ne 0 ]
+then
+  >&2 echo "$script ($(hostname)): ERROR - .ha_config not loaded, should be in either ., executable path, or homedir" 
+  exit 1
+fi
+
+[ -z "$silent"] && echo "$script ($(hostname)): Check running from remote HA configuration directory..."
+if [ ! -f configuration.yaml ]
+then
+  >&2 echo "$script ($(hostname)): ERROR - This script is expected to run from a remote HA configuration directory. current folder: $(pwd)"
+  exit 1
+fi
+
+[ -z "$silent"] && echo "$script ($(hostname)): Check running on HA server itself..."
+if [ -f .HA_VERSION ]
+then
+  >&2 echo "$script ($(hostname)): ERROR - .HA_VERSION found. This script is expected to run from a remote HA configuration directory. not the HA server itself"
+  exit 1
+fi
+
+###################################################################################
+## First update (UI) changes on HA server to master 
+###################################################################################
+[ -z "$silent" ] && echo "$script ($(hostname)): Copy $ha_config to HA updater folder $ha_homedir/$DIR_RELATIVE"
+scp $ha_config  $ha_user@$ha_host:$ha_homedir/$DIR_RELATIVE 
+if [ $? -ne 0 ] 
+then
+  >&2 echo "$script ($(hostname)): Errors copy $ha_config"
+  exit 1
+fi  
+
+[ "$verbose" == "1" ] && echo "$script ($(hostname)): Done."
+
+
+  
