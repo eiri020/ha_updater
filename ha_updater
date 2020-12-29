@@ -164,7 +164,7 @@ fi
 ## Combine both changes on develop and master for test
 ###################################################################################
 [ -z "$silent" ] && echo "$script ($(hostname)/$branch): Merge master changes into develop"
-git merge origin/master --commit -m "Merge master into develop" && git push
+git pull && git merge origin/master --commit -m "Merge master into develop" && git push
 if [ $? -ne 0 ] 
 then
   >&2 echo "$script ($(hostname)/$branch): Errors/Conflicts during merge of master into develop, abort"
