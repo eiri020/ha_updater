@@ -23,30 +23,6 @@ The scripts are made based on my specific setup:
 * A docker based setup (https://www.home-assistant.io/docs/installation/docker/)
 * git is configured to be accessed through SSH, using public keys for authentication
 
-# Docker
-Because of my docker setup, a few special considerations were needed:
-
-* volume mount the homeassistant users .ssh folder into the container, to be able to use the public key authentication when you trigger commands from the Lovelace UI. Here is mine docker-compose.yaml:
-```
-version: '3'
-services:
-  homeassistant:
-    container_name: home-assistant
-    image: homeassistant/raspberrypi4-homeassistant:stable
-    volumes:
-      - /home/homeassistant/.homeassistant:/config
-      - /var/lib/dehydrated/certs/my-host-name:/certs:ro
-      - /home/homeassistant/.ssh:/root/.ssh:ro
-    environment:
-      - TZ=Europe/Amsterdam
-    restart: always
-    network_mode: host
-```
-* git user and email need to be setup on the HA host in the home assistant configuration folder to have it both available within the docker container as on the HA host itself
-```
-git config --local user.name "username"
-git config --local user.email "email"
-```
 # Detailed flow
 For ease LAPTOP is my development system, HA the home Assistant server
 1) LAPTOP (develop): Edit configuration
@@ -79,51 +55,6 @@ Manually verify HA server (Lovelace, notifications and log files) to verify if t
 
 When you forget the manual switchback to master on the HA server, changes in the UI might be updated in the develop branch in stead of the master branch. Step 7 does some checking and tries to repair this, but not all cases, like merge conflicts) could be covered and need manual intervention.  
 Keep in mind, the HA server should normally (except for steps 7-12) always be on the master branch.
-
-# Installation
-* Clone this repository into the home assistant configuration folder. 
-* Copy the .ha_config.default to .ha_config and change options
-* Add the cloned repository folder to the .gitignore of your Home Assistant Configuration
-* following software packages need to be installed, on both your development pc and the Home Assistant server:
-  * jq
-  * head
-  * getopt
-  * curl 
-  * git
-  * bash
-  
-(All these packages seem to be preinstalled in the standard docker homeassistant images)
-* It assumed that you already have a git repository to host the updates (create a master and develop branch)
-* .HA_VERSION should be in you .gitignore. This way the scripts can detect if you are running on HA server or the development system
-* Activate the master branch on the Home Assistent server, activate the development branch on your development system
-
-# Configuration file
-All scripts will look (in this order) for the .ha_config file
-  * file with -c switch
-  * current working directory
-  * ha_updater script directory
-  * user home directory
-```
-ha_homedir=/home/homeassistant/.homeassistant
-ha_host=my-host-name
-ha_user=homeassistant
-ha_api_token="long lived access token"
-ha_http_protocol=https
-ha_http_port=8123
-notify=1
-silent=1
-force=1
-```
-* ha_homedir => full path of Home Assistant configuration on the HA host. Will be overriden with /config when script is detected to run within a docker container 
-* ha_host => will be both used as hostname for the HA REST API and for SSH connections
-* ha_user => Unix username used for SSH connections
-* ha_api_token => Token generated under user profile to access the HA REST API (https://www.home-assistant.io/docs/authentication/)
-* ha_http_protocol => either be http or https
-* ha_http_port => TCP port where HA is listening
-* notify=1 => HA server scripts will create persistant notification in case erros are detected
-* silent=1 => Script output will be less verbose. Currently still all output of git commands will be visible
-* force=1 => Try to repair unexpected states (like behind with git repo, or wrong branch)
-
 
 # Scripts
 For all scripts the following parameters can be supplied:
@@ -170,4 +101,73 @@ Can be runned on: developer system, Home Assistant server, HA Docker container
 Options
 * -t => title of notification
 * -m => message of notification
+
+# Installation
+* Clone this repository into the home assistant configuration folder. 
+* Copy the .ha_config.default to .ha_config and change options
+* Add the cloned repository folder to the .gitignore of your Home Assistant Configuration
+* following software packages need to be installed, on both your development pc and the Home Assistant server:
+  * jq
+  * head
+  * getopt
+  * curl 
+  * git
+  * bash
+  
+(All these packages seem to be preinstalled in the standard docker homeassistant images)
+* It assumed that you already have a git repository to host the updates (create a master and develop branch)
+* .HA_VERSION should be in you .gitignore. This way the scripts can detect if you are running on HA server or the development system
+* Activate the master branch on the Home Assistent server, activate the development branch on your development system
+
+# Configuration file
+All scripts will look (in this order) for the .ha_config file
+  * file with -c switch
+  * current working directory
+  * ha_updater script directory
+  * user home directory
+```
+ha_homedir=/home/homeassistant/.homeassistant
+ha_host=my-host-name
+ha_user=homeassistant
+ha_api_token="long lived access token"
+ha_http_protocol=https
+ha_http_port=8123
+notify=1
+silent=1
+force=1
+```
+* ha_homedir => full path of Home Assistant configuration on the HA host. Will be overriden with /config when script is detected to run within a docker container 
+* ha_host => will be both used as hostname for the HA REST API and for SSH connections
+* ha_user => Unix username used for SSH connections
+* ha_api_token => Token generated under user profile to access the HA REST API (https://www.home-assistant.io/docs/authentication/)
+* ha_http_protocol => either be http or https
+* ha_http_port => TCP port where HA is listening
+* notify=1 => HA server scripts will create persistant notification in case erros are detected
+* silent=1 => Script output will be less verbose. Currently still all output of git commands will be visible
+* force=1 => Try to repair unexpected states (like behind with git repo, or wrong branch)
+
+# Docker
+Because of my docker setup, a few special considerations were needed:
+
+* volume mount the homeassistant users .ssh folder into the container, to be able to use the public key authentication when you trigger commands from the Lovelace UI. Here is mine docker-compose.yaml:
+```
+version: '3'
+services:
+  homeassistant:
+    container_name: home-assistant
+    image: homeassistant/raspberrypi4-homeassistant:stable
+    volumes:
+      - /home/homeassistant/.homeassistant:/config
+      - /var/lib/dehydrated/certs/my-host-name:/certs:ro
+      - /home/homeassistant/.ssh:/root/.ssh:ro
+    environment:
+      - TZ=Europe/Amsterdam
+    restart: always
+    network_mode: host
+```
+* git user and email need to be setup on the HA host in the home assistant configuration folder to have it both available within the docker container as on the HA host itself
+```
+git config --local user.name "username"
+git config --local user.email "email"
+```
 
