@@ -103,7 +103,7 @@ Options
 * -m => message of notification
 
 # Installation
-* Clone this repository into the home assistant configuration folder. 
+* Clone this repository (https://github.com/eiri020/ha_updater) as subfolder of the home assistant configuration folder. 
 * Copy the .ha_config.default to .ha_config and change options
 * Add the cloned repository folder to the .gitignore of your Home Assistant Configuration
 * following software packages need to be installed, on both your development pc and the Home Assistant server:
