@@ -102,6 +102,7 @@ Options
 * -t => title of notification
 * -m => message of notification
 
+<<<<<<< HEAD
 # Installation
 * Clone this repository into the home assistant configuration folder. 
 * Copy the .ha_config.default to .ha_config and change options
@@ -171,3 +172,39 @@ git config --local user.name "username"
 git config --local user.email "email"
 ```
 
+=======
+# Actions from Lovelace
+I added the following configuration to be able to trigger some actions in the HA Lovelace UI
+
+```
+shell_command:
+  ha_pull_develop: "/config/ha_updater/ha_pull_develop -n"
+  ha_push_master: "/config/ha_updater/ha_push_master -n"
+  ha_finalize_master: "/config/ha_updater/ha_finalize_master -n"
+
+script:
+  ha_pull_develop:
+    sequence:
+      - service: shell_command.ha_pull_develop
+      - service: homeassistant.update_entity
+        entity_id: sensor.ha_current_branch
+
+  ha_push_master:
+    sequence:
+      - service: shell_command.ha_push_master
+      - service: homeassistant.update_entity
+        entity_id: sensor.ha_current_branch
+  
+  ha_finalize_master:
+    sequence:
+      - service: shell_command.ha_finalize_master
+      - service: homeassistant.update_entity
+        entity_id: sensor.ha_current_branch
+  
+        
+sensor:
+  - platform: command_line
+    name: ha_current_branch
+    command: "git --git-dir=/config/.git rev-parse --abbrev-ref HEAD"
+```
+>>>>>>> c38588286e7e3d65a2ed09d1b6bd8b72e8feb12b
