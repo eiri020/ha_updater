@@ -23,6 +23,9 @@ while getopts "snc:" o; do
         s)
             silent=1
             ;;
+        x)
+            full=1
+            ;;
     esac
 done
 shift $((OPTIND-1))
@@ -61,21 +64,33 @@ exit_notification() {
   exit 1
 }
 
-[ -z "$silent" ] && echo "HA: Validating"  
-
-CHECK_RESULT=$(curl -s --request POST \
-  --url "$ha_http_protocol://$ha_host:$ha_http_port/api/config/core/check_config" \
-  --header "Authorization: Bearer $ha_api_token" \
-  --header 'Content-Type: application/json')
-if [ "$?" -ne 0 ] 
+if [ ! -z full ]
 then
-  exit_notification "HA: Error calling HA config validate API. abort"
-fi
+  [ -z "$silent" ] && echo "HA: Restarting with docker compose"  
 
-valid=$(echo $CHECK_RESULT | jq -r .result)
-if [ $valid != "valid" ]
-then
-  exit_notification "$(echo -n $CHECK_RESULT | jq -r .errors)"
+  if [ ! -f "$ha_homedir/.HA_VERSION" ]
+  then
+    [ -z "$silent" ] && echo "$script ($(hostname)/$branch): .HA_VERSION not found, assuming develop computer, now calling script on server"  
+    ssh $ha_user@$ha_host "cd $ha_homedir ; $DIR_RELATIVE/$script $(add_remote_parameters)"
+    if [ $? -ne 0 ] 
+    then
+      [ -z "$silent" ] && echo "$script ($(hostname)/$branch): Error restarting homeassistant service"  
+      exit 1
+    fi
+  else
+    docker-compose restart
+  fi
 else
-  [ -z "$silent" ] && echo "HA: Validation OK"  
+  [ -z "$silent" ] && echo "HA: Restarting with API"  
+
+  RESTART_RESULT=$(curl -s --request POST \
+    --url "$ha_http_protocol://$ha_host:$ha_http_port/api/services/homeassistant/restart" \
+    --header "Authorization: Bearer $ha_api_token" \
+    --header 'Content-Type: application/json')
+  if [ "$?" -ne 0 ] 
+  then
+    exit_notification "Error calling HA restart API. abort"
+  fi
 fi
+
+[ -z "$silent" ] && echo "HA: Done"  
