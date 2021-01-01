@@ -64,6 +64,19 @@ exit_notification() {
   exit 1
 }
 
+
+add_remote_parameters() {
+
+  local args=""
+
+  [ ! -z "$full" ] && args="$args -x "
+  [ ! -z "$force" ] && args="$args -f "
+  [ ! -z "$notify" ] && args="$args -n "
+  [ ! -z "$silent" ] && args="$args -s "
+
+  echo "$args"
+}
+
 if [ ! -z full ]
 then
   [ -z "$silent" ] && echo "HA: Restarting with docker compose"  
