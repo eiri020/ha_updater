@@ -91,7 +91,8 @@ then
       exit 1
     fi
   else
-    docker-compose restart
+    docker-compose down
+    docker-compose up -d
   fi
 else
   [ -z "$silent" ] && echo "HA: Restarting with API"  
