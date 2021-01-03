@@ -54,7 +54,7 @@ exit_notification() {
 
   if [ ! -z "$notify" ]
   then
-    $DIR/notify -m "$1" -t "$script ($(hostname)/$branch)" -c "$ha_config"
+    $DIR/ha_notify -m "$1" -t "$script ($(hostname)/$branch)" -c "$ha_config"
   fi
 
   >&2 echo  "$script ($(hostname)/$branch): Validation failed: $1"
